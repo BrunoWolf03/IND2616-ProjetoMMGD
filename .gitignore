@@ -1,0 +1,37 @@
+# Dados (não versionar)
+data/
+*.parquet
+*.csv
+*.xlsx
+*.xls
+*.json
+*.zip
+*.gz
+*.pkl
+*.pickle
+*.feather
+*.h5
+*.hdf5
+*.db
+*.sqlite
+
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+
+# Variáveis de ambiente
+.env
