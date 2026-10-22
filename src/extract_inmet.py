@@ -2,7 +2,7 @@
 
 Fonte: https://portal.inmet.gov.br/uploads/dadoshistoricos/{ANO}.zip
 
-Comportamentos observados nos arquivos reais de 2023-2026 (out/2026):
+Comportamentos observados nos arquivos reais de 2019-2026 (out/2026):
 - O servidor derruba conexões com o User-Agent padrão do curl; com UA de
   navegador responde normalmente.
 - Um CSV por estação e ano, nome INMET_{REG}_{UF}_{CODIGO}_{NOME}_{dd-mm-aaaa}_A_{dd-mm-aaaa}.CSV.
@@ -11,9 +11,12 @@ Comportamentos observados nos arquivos reais de 2023-2026 (out/2026):
   recente preenche lacunas do anterior, então fica o de data final maior.
 - latin-1, separador ";", vírgula decimal (às vezes sem zero: ",1"), ";" final.
 - 8 linhas de metadados (REGIAO, UF, ESTACAO, CODIGO (WMO), LATITUDE, LONGITUDE,
-  ALTITUDE, DATA DE FUNDACAO) e depois o cabeçalho da tabela.
-- Em 2023-2026: colunas "Data" (aaaa/mm/dd) e "Hora UTC" ("1200 UTC"). Anos
+  ALTITUDE, DATA DE FUNDACAO) e depois o cabeçalho da tabela. Em 2019 o "Ã" dos
+  metadados vem como "?" (ESTAC?O, REGI?O).
+- Em 2019-2026: colunas "Data" (aaaa/mm/dd) e "Hora UTC" ("1200 UTC"). Anos
   anteriores usam "DATA (YYYY-MM-DD)" / "HORA (UTC)" ("12:00"); ambos são aceitos.
+- O zip de 2020 traz a estação C891 (CRIOSFERA, Antártida) rotulada SE/SP; estações
+  fora da caixa LAT_SE/LON_SE são descartadas em build().
 - Faltantes vêm vazios (nenhum -9999 no Sudeste 2023-2026, mas é tratado).
 - Radiação global em kJ/m², vazia à noite.
 - Convenção do horário: o rótulo é o FIM da hora (15:00 UTC = 14:00-15:00),
@@ -38,7 +41,8 @@ import requests
 
 URL = "https://portal.inmet.gov.br/uploads/dadoshistoricos/{ano}.zip"
 UFS_SE = ["SP", "MG", "RJ", "ES"]
-ANOS = [2023, 2024, 2025, 2026]
+ANOS = list(range(2019, 2027))  # mesma janela do ONS (MMGD estimada desde 02/2019)
+LAT_SE, LON_SE = (-26.0, -14.0), (-54.0, -39.0)  # caixa do Sudeste, com folga
 
 # prefixo normalizado (sem acento, maiúsculo) da coluna no CSV -> nome de saída
 VARS = {
@@ -136,7 +140,8 @@ def read_metadata(path: Path) -> dict:
     meta = {}
     for line in lines:
         k, _, v = line.partition(";")
-        meta[_norm(k).rstrip(":")] = v.split(";")[0].strip()
+        # até 2019 o "Ã" vem gravado como "?" (ESTAC?O, REGI?O, FUNDAC?O)
+        meta[_norm(k).rstrip(":").replace("?", "A")] = v.split(";")[0].strip()
 
     def num(v: str) -> float:
         return float(v.replace(",", ".")) if v else np.nan
@@ -217,6 +222,11 @@ def build(ufs: list[str], anos: list[int], raw_dir: Path) -> tuple[pd.DataFrame,
         zp = download_zip(ano, raw_dir)
         for p in extract_ufs(zp, ano, ufs, raw_dir):
             meta, df = read_station(p)
+            # em 2020 a estação C891 (CRIOSFERA, Antártida, lat -84) vem rotulada SE/SP
+            if not (LAT_SE[0] <= meta["lat"] <= LAT_SE[1] and LON_SE[0] <= meta["lon"] <= LON_SE[1]):
+                log.warning("%d: %s %s ignorada, fora do Sudeste (lat %.2f, lon %.2f)",
+                            ano, meta["codigo"], meta["nome"], meta["lat"], meta["lon"])
+                continue
             metas.append({**meta, "ano": ano, "arquivo": p.name})
             frames.append(df)
     meta = pd.DataFrame(metas)

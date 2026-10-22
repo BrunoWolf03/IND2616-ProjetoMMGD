@@ -1,6 +1,6 @@
 # IND2616-ProjetoMMGD
 
-"Como a micro e minigeração distribuída está se difundindo no Brasil, qual foi o efeito da Lei 14.300 nessa trajetória, e até onde ela chega até 2030 em cada região?"
+"Como a micro e minigeração distribuída está se difundindo no Brasil, qual foi o efeito da Lei 14.300 nessa trajetória, e até onde ela chega até 2030 em região do sudeste brasileiro?"
 
 ## Como rodar o projeto
 
@@ -46,12 +46,12 @@ python src/main.py --refresh            # baixa de novo ONS e ANEEL (retratos ma
 
 Todas as etapas usam cache: rodar de novo só baixa o que falta.
 
-| Etapa | Script | Fonte | Saída principal |
-|---|---|---|---|
-| `ons` | `src/extract_ons.py` | API de carga verificada do ONS (SP, MG, RJ, ES) | `data/processed/ons_carga_horaria.parquet` |
-| `inmet` | `src/extract_inmet.py` | estações automáticas do INMET (Sudeste) | `data/processed/inmet_horario_por_uf.parquet` |
-| `aneel` | `src/extract_aneel.py` | cadastro de MMGD da ANEEL (dados abertos) | `data/raw/aneel/*.parquet` |
-| `preproc` | `src/preprocess_aneel.py` | base da ANEEL | `data/interim/aneel_gd_preproc.parquet` |
+| Etapa       | Script                      | Fonte                                           | Saída principal                                |
+| ----------- | --------------------------- | ----------------------------------------------- | ----------------------------------------------- |
+| `ons`     | `src/extract_ons.py`      | API de carga verificada do ONS (SP, MG, RJ, ES) | `data/processed/ons_carga_horaria.parquet`    |
+| `inmet`   | `src/extract_inmet.py`    | estações automáticas do INMET (Sudeste)      | `data/processed/inmet_horario_por_uf.parquet` |
+| `aneel`   | `src/extract_aneel.py`    | cadastro de MMGD da ANEEL (dados abertos)       | `data/raw/aneel/*.parquet`                    |
+| `preproc` | `src/preprocess_aneel.py` | base da ANEEL                                   | `data/interim/aneel_gd_preproc.parquet`       |
 
 Cada script também roda sozinho (`python src/extract_ons.py --help`). As checagens de qualidade são impressas no terminal e salvas em `data/interim/checks_*`; os gráficos vão para `resultados/`.
 

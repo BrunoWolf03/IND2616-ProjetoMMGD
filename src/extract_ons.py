@@ -410,7 +410,8 @@ def run_checks(
 def main(argv: list[str] | None = None) -> None:
     yesterday = datetime.now(TZ_LOCAL).date() - timedelta(days=1)
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--start", type=date.fromisoformat, default=date(2023, 1, 1))
+    p.add_argument("--start", type=date.fromisoformat, default=date(2019, 2, 17),
+                   help="padrão: primeiro dia com val_cargammgd preenchida")
     p.add_argument("--end", type=date.fromisoformat, default=yesterday,
                    help="último dia local (padrão: ontem; o dia corrente vem parcial)")
     p.add_argument("--areas", nargs="+", default=AREAS_SE,
