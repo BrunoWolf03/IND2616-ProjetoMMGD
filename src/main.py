@@ -5,6 +5,7 @@ Etapas, na ordem:
   inmet     estações automáticas do INMET (src/extract_inmet.py)
   aneel     cadastro de MMGD da ANEEL (src/extract_aneel.py)
   preproc   pré-processamento da base da ANEEL (src/preprocess_aneel.py)
+  serie     série mensal por UF do Sudeste, entrada dos modelos (src/build_series.py)
 
 Todas usam cache: rodar de novo só baixa o que falta. Uso:
   python src/main.py                    # tudo
@@ -17,12 +18,13 @@ from __future__ import annotations
 import argparse
 import time
 
+import build_series
 import extract_aneel
 import extract_inmet
 import extract_ons
 import preprocess_aneel
 
-ETAPAS = ["ons", "inmet", "aneel", "preproc"]
+ETAPAS = ["ons", "inmet", "aneel", "preproc", "serie"]
 
 
 def main() -> None:
@@ -38,6 +40,7 @@ def main() -> None:
         "inmet": lambda: extract_inmet.main([]),
         "aneel": lambda: extract_aneel.main(refresh),
         "preproc": lambda: preprocess_aneel.main([]),
+        "serie": lambda: build_series.main([]),
     }
     tempos = {}
     for etapa in ETAPAS:

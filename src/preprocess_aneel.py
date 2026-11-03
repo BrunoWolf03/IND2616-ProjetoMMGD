@@ -7,7 +7,8 @@ em data/raw/aneel/ (usado só para diagnosticar duplicatas).
 Etapas:
 1. Remove usinas com DthAtualizaCadastralEmpreend = 1900-01-01 (data sentinela).
 2. Marca possíveis duplicatas: usinas idênticas em TODAS as colunas exceto
-   CodEmpreendimento. Nada é removido aqui; a decisão fica para depois.
+   CodEmpreendimento. Nada é removido aqui; build_series.py descarta as cópias
+   (dup_candidato) ao montar a série dos modelos.
 
 Sobre as duplicatas (diagnóstico de out/2026):
 - CodEmpreendimento é numerado em sequência no tempo dentro de cada UF, então dá
