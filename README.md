@@ -3,8 +3,6 @@
 Trabalho da disciplina IND2616 Séries Temporais (PUC-Rio, DEI).
 Gustavo Riedel, Bruno Wolf e Enzo Dux.
 
-![Potência de MMGD adicionada por mês no Sudeste](resultados/aneel_serie_mensal_sudeste.png)
-
 ## Objetivo
 
 A micro e minigeração distribuída (MMGD), quase toda solar em telhados, passou de
@@ -28,17 +26,19 @@ A referência metodológica é Hyndman & Athanasopoulos, *Forecasting: Principle
 | # | Fase | Método | Saída | Situação |
 |---|---|---|---|---|
 | 1 | Dados | extração com cache, checagens, série mensal por UF | `data/processed/` | feito |
-| 2 | Exploração e identificação | transformação log (§3.1), decomposição STL (§3.6), ACF/PACF (§2.8), testes de raiz unitária e diferenciação (§9.1), força de tendência e sazonalidade (§4.3) | transformação, ordens de diferenciação e se há termo sazonal, por UF | próximo |
-| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) com variáveis de intervenção (§7.4): *spike*/degrau para a corrida (jan/2022 a meados de 2023) e mudança de nível e de inclinação depois; leitura como análise de intervenção (Box & Tiao, 1975) | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) | a fazer |
+| 2 | Exploração e identificação | transformação log (§3.1), decomposição STL (§3.6), ACF/PACF (§2.8), testes de raiz unitária e diferenciação (§9.1), força de tendência e sazonalidade (§4.3) | transformação, ordens de diferenciação e se há termo sazonal, por UF ([notebook](notebooks/02_identificacao.ipynb)) | feito |
+| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) com variáveis de intervenção (§7.4): *spike*/degrau para a corrida (jan/2022 a meados de 2023) e mudança de nível e de inclinação depois; leitura como análise de intervenção (Box & Tiao, 1975) | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) | próximo |
 | 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) | modelo escolhido por UF | a fazer |
 | 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, comparada com a reconciliação hierárquica SP+MG+RJ+ES = Sudeste (cap. 11, §13.5) | leque da potência acumulada do Sudeste em 2030 | a fazer |
 | 6 | Impacto na rede | cenários de 2030 × perfil horário de radiação (INMET) contra a carga do ONS | carga líquida ao meio-dia em 2030 | a fazer |
 
-O que os dados já mostram (fase 1):
+O que os dados já mostram (fases 1 e 2):
 
 - O ano de 2024 é o maior da série no Sudeste (3,5 GW). A queda só aparece em 2025, então o efeito da lei não é imediato.
-- Em escala log, o crescimento de todos os estados já desacelerava antes de 2022 ([gráfico](resultados/aneel_serie_log_uf.png)).
-- A sazonalidade é fraca ([mapa de calor](resultados/aneel_sazonalidade_sudeste.png)). A fase 2 testa se o termo sazonal é necessário.
+- Em escala log, o crescimento de todos os estados já desacelerava antes de 2022 (`resultados/aneel_serie_log_uf.png`).
+- A sazonalidade é fraca: a força sazonal fica no máximo em 0,33, abaixo do limiar de 0,64 do FPP3, então não há diferença sazonal.
+- Em todas as UFs o log tem uma raiz unitária (d = 1), e a diferença se comporta como MA(1). O ponto de partida é um ARIMA(0,1,1).
+- O teste de Zivot-Andrews põe a quebra mais forte na taxa de crescimento de SP em jan/2023 (fim da janela da lei), e a de MG e do Sudeste em mar–abr/2020, antes da lei. O modelo da fase 3 precisa separar esses dois movimentos.
 
 ## Dados
 
@@ -69,7 +69,8 @@ src/                    pipeline de dados: um script por etapa
   build_series.py       etapa serie
   estilo.py             cores e estilo comuns dos gráficos
 notebooks/              exploração e análise
-resultados/             gráficos gerados pelos scripts (versionados)
+  02_identificacao.ipynb  fase 2: STL, ACF/PACF, raiz unitária, quebras
+resultados/             gráficos gerados pelos scripts (não versionado, criado pelo main.py)
 data/                   não versionado, criado pelo main.py
   raw/                  arquivos como vieram das fontes
   interim/              bases intermediárias e checagens (checks_*)
