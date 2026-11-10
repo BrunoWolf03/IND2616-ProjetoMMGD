@@ -8,7 +8,8 @@ Gustavo Riedel, Bruno Wolf e Enzo Dux.
 A micro e minigeração distribuída (MMGD), quase toda solar em telhados, passou de
 ~20 MW instalados por ano no Sudeste em 2016 para mais de 3 GW por ano em 2024. A Lei 14.300,
 de jan/2022, mudou a compensação de energia. Quem protocolou o pedido até jan/2023
-manteve a regra antiga, e os demais passam a pagar o uso da rede de forma gradual até 2029.
+manteve a regra antiga. Os demais passam a pagar o uso da rede (Fio B) de forma gradual,
+de 15% em 2023 a 90% em 2028. A partir de 2029 vale uma regra nova, que a ANEEL ainda não definiu.
 
 O trabalho responde três perguntas para SP, MG, RJ e ES:
 
@@ -16,7 +17,8 @@ O trabalho responde três perguntas para SP, MG, RJ e ES:
 2. **Efeito da lei:** quanto da corrida de 2022–2023 e da queda depois dela se deve à Lei 14.300,
    separando isso da desaceleração que a série já mostrava?
 3. **2030:** quanta potência o Sudeste terá instalada em 2030 e, com isso, quanto a MMGD
-   reduz a carga da rede ao meio-dia?
+   reduz a carga da rede ao meio-dia? E quanto isso muda se a regra de 2029 provocar um choque
+   como o do fim da janela da lei em 2023, ou metade, ou o dobro dele?
 
 ## Plano
 
@@ -27,10 +29,15 @@ A referência metodológica é Hyndman & Athanasopoulos, *Forecasting: Principle
 |---|---|---|---|---|
 | 1 | Dados | extração com cache, checagens, série mensal por UF | `data/processed/` | feito |
 | 2 | Exploração e identificação | transformação log (§3.1), decomposição STL (§3.6), ACF/PACF (§2.8), testes de raiz unitária e diferenciação (§9.1), força de tendência e sazonalidade (§4.3) | transformação, ordens de diferenciação e se há termo sazonal, por UF ([notebook](notebooks/02_identificacao.ipynb)) | feito |
-| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) com variáveis de intervenção (§7.4): *spike*/degrau para a corrida (jan/2022 a meados de 2023) e mudança de nível e de inclinação depois; leitura como análise de intervenção (Box & Tiao, 1975) | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) | próximo |
-| 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) | modelo escolhido por UF | a fazer |
-| 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, comparada com a reconciliação hierárquica SP+MG+RJ+ES = Sudeste (cap. 11, §13.5) | leque da potência acumulada do Sudeste em 2030 | a fazer |
-| 6 | Impacto na rede | cenários de 2030 × perfil horário de radiação (INMET) contra a carga do ONS | carga líquida ao meio-dia em 2030 | a fazer |
+| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) sobre o log, com variáveis de intervenção (§7.4) em datas fixadas pelo calendário: mudança na taxa de crescimento em abr/2020 (desaceleração anterior à lei) e na corrida (jan/2022 a jun/2023), e queda de nível e mudança de taxa depois dela; leitura como análise de intervenção (Box & Tiao, 1975). Ordens por AICc em torno do ARIMA(0,1,1). Robustez: contrafactual ajustado até dez/2021 e fim da corrida em jan/2023 | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) ([notebook](notebooks/03_intervencao.ipynb)) | feito |
+| 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção, com d = 1 e com tendência quebrada e d = 0; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) | modelo escolhido por UF | a fazer |
+| 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, cuja soma dá o Sudeste. Cenários para a regra de 2029: base (sem choque) e 0,5×, 1× e 2× o choque de jul/2023 estimado na fase 3, aplicado a partir de jan/2029, com o efeito sorteado da sua distribuição na simulação | leque da potência acumulada do Sudeste em 2030, por cenário | a fazer |
+| 6 | Impacto na rede | cenários de 2030 × perfil horário de radiação (INMET) contra a carga do ONS | carga líquida ao meio-dia em 2030, por cenário | a fazer |
+
+Os multiplicadores 0,5×, 1× e 2× são escolhidos, não estimados: o histórico tem um único episódio de mudança de regra.
+Fica como trabalho futuro estimar a resposta do mercado ao custo a partir dos degraus anuais do Fio B (15% → 90%),
+o que permitiria traduzir uma regra concreta em efeito. Isso exige a composição tarifária por distribuidora, e o sinal
+tende a ser fraco: são poucos degraus, todos em janeiro.
 
 O que os dados já mostram (fases 1 e 2):
 
@@ -39,6 +46,15 @@ O que os dados já mostram (fases 1 e 2):
 - A sazonalidade é fraca: a força sazonal fica no máximo em 0,33, abaixo do limiar de 0,64 do FPP3, então não há diferença sazonal.
 - Em todas as UFs o log tem uma raiz unitária (d = 1), e a diferença se comporta como MA(1). O ponto de partida é um ARIMA(0,1,1).
 - O teste de Zivot-Andrews põe a quebra mais forte na taxa de crescimento de SP em jan/2023 (fim da janela da lei), e a de MG e do Sudeste em mar–abr/2020, antes da lei. O modelo da fase 3 precisa separar esses dois movimentos.
+
+O que a fase 3 mostra:
+
+- A desaceleração começou em 2020, antes da lei: o crescimento do Sudeste cai de ~200% para ~40% ao ano.
+- A corrida de 2022–2023 não acelerou o crescimento (exceto em MG), e depois dela o crescimento para (~4% ao ano no Sudeste).
+- Em jun/2026, a potência adicionada por mês no Sudeste está ~70% abaixo do que o ritmo de 2020–2021 daria. O número se mantém no contrafactual, com outro fim de corrida e com d = 0. É um teto, porque o modelo não separa a lei de saturação e juros.
+- A significância depende de d: com d = 1, só MG tem efeito significativo; com tendência quebrada e d = 0, SP, RJ e Sudeste também. A fase 4 decide entre os dois.
+- O AICc prefere o fim da corrida em jan/2023 em SP e no Sudeste, e em jun/2023 em MG. O modelo mantém jun/2023, porque a data
+  vem do atraso entre protocolo e conexão e não do ajuste, e o efeito total quase não muda. Jan/2023 fica como sensibilidade.
 
 ## Dados
 
@@ -70,6 +86,7 @@ src/                    pipeline de dados: um script por etapa
   estilo.py             cores e estilo comuns dos gráficos
 notebooks/              exploração e análise
   02_identificacao.ipynb  fase 2: STL, ACF/PACF, raiz unitária, quebras
+  03_intervencao.ipynb    fase 3: regressão com erros ARIMA e efeito da lei
 resultados/             gráficos gerados pelos scripts (não versionado, criado pelo main.py)
 data/                   não versionado, criado pelo main.py
   raw/                  arquivos como vieram das fontes
