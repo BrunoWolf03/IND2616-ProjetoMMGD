@@ -29,9 +29,9 @@ A referência metodológica é Hyndman & Athanasopoulos, *Forecasting: Principle
 |---|---|---|---|---|
 | 1 | Dados | extração com cache, checagens, série mensal por UF | `data/processed/` | feito |
 | 2 | Exploração e identificação | transformação log (§3.1), decomposição STL (§3.6), ACF/PACF (§2.8), testes de raiz unitária e diferenciação (§9.1), força de tendência e sazonalidade (§4.3) | transformação, ordens de diferenciação e se há termo sazonal, por UF ([notebook](notebooks/02_identificacao.ipynb)) | feito |
-| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) sobre o log, com variáveis de intervenção (§7.4) em datas fixadas pelo calendário: mudança na taxa de crescimento em abr/2020 (desaceleração anterior à lei) e na corrida (jan/2022 a jun/2023), e queda de nível e mudança de taxa depois dela; leitura como análise de intervenção (Box & Tiao, 1975). Ordens por AICc em torno do ARIMA(0,1,1). Robustez: contrafactual ajustado até dez/2021 e fim da corrida em jan/2023 | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) ([notebook](notebooks/03_intervencao.ipynb)) | feito |
-| 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção, com d = 1 e com tendência quebrada e d = 0; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) | modelo escolhido por UF | a fazer |
-| 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, cuja soma dá o Sudeste. Cenários para a regra de 2029: base (sem choque) e 0,5×, 1× e 2× o choque de jul/2023 estimado na fase 3, aplicado a partir de jan/2029, com o efeito sorteado da sua distribuição na simulação | leque da potência acumulada do Sudeste em 2030, por cenário | a fazer |
+| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) sobre o log, com variáveis de intervenção (§7.4) em datas fixadas pelo calendário: mudança na taxa de crescimento em abr/2020 (desaceleração anterior à lei) e na corrida (jan/2022 a jun/2023), e queda de nível e mudança de taxa depois dela; leitura como análise de intervenção (Box & Tiao, 1975). Ordens por AICc em torno do ARIMA(0,1,1). Robustez: contrafactual ajustado até dez/2021 e fim da corrida em jan/2023 | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) ([notebook](notebooks/03_intervencao.ipynb)); variante com degraus na taxa, contrafactuais em GW e teste de ordens maiores ([notebook 03b](notebooks/03b_intervencao_degraus.ipynb)) | feito |
+| 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção, com d = 1 e com tendência quebrada e d = 0; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) e calibração pelo PIT | modelo escolhido por UF ([notebook](notebooks/04_comparacao.ipynb)) | feito |
+| 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, cuja soma dá o Sudeste, comparada com o Sudeste direto e a reconciliação MinT (cap. 11, §13.5). Cenários para a regra de 2029: base (sem choque) e 0,5×, 1× e 2× o choque de jul/2023 estimado na fase 3, aplicado a partir de jan/2029, com o efeito sorteado da sua distribuição na simulação | leque da potência acumulada do Sudeste em 2030, por cenário ([notebook](notebooks/05_cenarios_2030.ipynb)) | feito |
 | 6 | Impacto na rede | cenários de 2030 × perfil horário de radiação (INMET) contra a carga do ONS | carga líquida ao meio-dia em 2030, por cenário | a fazer |
 
 Os multiplicadores 0,5×, 1× e 2× são escolhidos, não estimados: o histórico tem um único episódio de mudança de regra.
@@ -55,6 +55,12 @@ O que a fase 3 mostra:
 - A significância depende de d: com d = 1, só MG tem efeito significativo; com tendência quebrada e d = 0, SP, RJ e Sudeste também. A fase 4 decide entre os dois.
 - O AICc prefere o fim da corrida em jan/2023 em SP e no Sudeste, e em jun/2023 em MG. O modelo mantém jun/2023, porque a data
   vem do atraso entre protocolo e conexão e não do ajuste, e o efeito total quase não muda. Jan/2023 fica como sensibilidade.
+- A variante com degraus na taxa (notebook 03b) chega à mesma leitura. A corrida acrescentou de 0,5 a 1,0 GW frente aos contrafactuais sem lei, e de jul/2023 a jun/2026 faltam de 5 a 8 GW. Os resíduos de MG e ES têm autocorrelação perto do lag 10 que ordens até ARMA(3,3) não eliminam, e o efeito estimado não muda com a ordem.
+
+O que as fases 4 e 5 mostram:
+
+- **O modelo escolhido é a combinação ETS + Bass**, com o menor CRPS em SP, ES e no Sudeste e viés de 1% na soma de 12 meses do Sudeste. Os modelos isolados erram em sentidos opostos: os de tendência preveem demais e o Bass, de menos. No modelo de intervenção, a cobertura baixa de MG e ES na validação cruzada vem de viés, e não de intervalos estreitos.
+- **2030:** o Sudeste deve ter cerca de **26,5 GW instalados em dez/2030** (80%: 22,8 a 31,1 GW), contra 16,7 GW em jun/2026, com 2 a 2,5 GW adicionados por ano. A cópula entre os estados alarga o leque em 17%. A soma dos estados, a previsão direta e a reconciliação MinT diferem em menos de 0,5 GW. Conforme o modelo, a média vai de 18,7 GW (Bass) a 34,3 GW (ETS).
 
 ## Dados
 
@@ -83,10 +89,14 @@ src/                    pipeline de dados: um script por etapa
   extract_aneel.py      etapa aneel
   preprocess_aneel.py   etapa preproc
   build_series.py       etapa serie
+  modelos.py            modelos das fases 4 e 5 (e do notebook 03b): candidatos, validação cruzada, cópula, reconciliação
   estilo.py             cores e estilo comuns dos gráficos
 notebooks/              exploração e análise
   02_identificacao.ipynb  fase 2: STL, ACF/PACF, raiz unitária, quebras
   03_intervencao.ipynb    fase 3: regressão com erros ARIMA e efeito da lei
+  03b_intervencao_degraus.ipynb  fase 3, variante: degraus na taxa, contrafactuais em GW, ordens maiores
+  04_comparacao.ipynb     fase 4: validação cruzada dos candidatos e escolha do modelo
+  05_cenarios_2030.ipynb  fase 5: simulação conjunta com cópula, reconciliação, cenários de 2029 e leque de 2030
 resultados/             gráficos gerados pelos scripts (não versionado, criado pelo main.py)
 data/                   não versionado, criado pelo main.py
   raw/                  arquivos como vieram das fontes
@@ -131,6 +141,7 @@ python src/main.py --refresh               # baixa de novo ONS e ANEEL (retratos
 ```
 
 Para os notebooks, selecione o kernel do `.venv` no VSCode ou no Jupyter.
+Os notebooks 03 a 05 rodam em ordem: o 05 lê o choque gravado pelo 03 e o resultado da validação cruzada do 04 (`data/interim/cv_fase4.parquet`, ~7 min para refazer), e grava os caminhos de 2030 em `data/processed/cenarios_2030_caminhos.parquet`, a entrada da fase 6.
 
 Se instalar um pacote novo, acrescente-o ao `requirements.txt` com a versão fixada.
 
