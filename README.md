@@ -61,6 +61,7 @@ O que as fases 4 e 5 mostram:
 
 - **O modelo escolhido é a combinação ETS + Bass**, com o menor CRPS em SP, ES e no Sudeste e viés de 1% na soma de 12 meses do Sudeste. Os modelos isolados erram em sentidos opostos: os de tendência preveem demais e o Bass, de menos. No modelo de intervenção, a cobertura baixa de MG e ES na validação cruzada vem de viés, e não de intervalos estreitos.
 - **2030:** o Sudeste deve ter cerca de **26,5 GW instalados em dez/2030** (80%: 22,8 a 31,1 GW), contra 16,7 GW em jun/2026, com 2 a 2,5 GW adicionados por ano. A cópula entre os estados alarga o leque em 17%. A soma dos estados, a previsão direta e a reconciliação MinT diferem em menos de 0,5 GW. Conforme o modelo, a média vai de 18,7 GW (Bass) a 34,3 GW (ETS).
+- **Regra de 2029:** se ela repetir o choque de jul/2023 a partir de jan/2029, o Sudeste fica com 25,8 GW (0,5×), 25,3 GW (1×) ou 24,9 GW (2×) em dez/2030, quase tudo por MG, o único estado com choque estimado com precisão. Sorteando o choque da sua distribuição, a média deixa de servir, porque a mudança de taxa de SP tem erro-padrão dez vezes maior que a estimativa; a leitura usa o efeito fixo (`resultados/cenarios_2029_choque_se.png`).
 
 ## Dados
 
