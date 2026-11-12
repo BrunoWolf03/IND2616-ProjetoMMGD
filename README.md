@@ -27,10 +27,10 @@ A referência metodológica é Hyndman & Athanasopoulos, *Forecasting: Principle
 |---|---|---|---|---|
 | 1 | Dados | extração com cache, checagens, série mensal por UF | `data/processed/` | feito |
 | 2 | Exploração e identificação | transformação log (§3.1), decomposição STL (§3.6), ACF/PACF (§2.8), testes de raiz unitária e diferenciação (§9.1), força de tendência e sazonalidade (§4.3) | transformação, ordens de diferenciação e se há termo sazonal, por UF ([notebook](notebooks/02_identificacao.ipynb)) | feito |
-| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) com variáveis de intervenção (§7.4): *spike*/degrau para a corrida (jan/2022 a meados de 2023) e mudança de nível e de inclinação depois; leitura como análise de intervenção (Box & Tiao, 1975) | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) | próximo |
-| 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) | modelo escolhido por UF | a fazer |
-| 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, comparada com a reconciliação hierárquica SP+MG+RJ+ES = Sudeste (cap. 11, §13.5) | leque da potência acumulada do Sudeste em 2030 | a fazer |
-| 6 | Impacto na rede | cenários de 2030 × perfil horário de radiação (INMET) contra a carga do ONS | carga líquida ao meio-dia em 2030 | a fazer |
+| 3 | Efeito da lei | regressão com erros ARIMA (cap. 10) com variáveis de intervenção (§7.4): *spike*/degrau para a corrida (jan/2022 a meados de 2023) e mudança de nível e de inclinação depois; leitura como análise de intervenção (Box & Tiao, 1975) | efeito estimado da lei por UF, com intervalo, e diagnóstico de resíduos (§5.4) ([notebook](notebooks/03_intervencao.ipynb)) | feito |
+| 4 | Comparação de modelos | naïve e drift (§5.2), ETS (cap. 8), ARIMA (cap. 9) e o modelo com intervenção; Bass (1969) como referência de difusão; validação cruzada temporal (§5.10) com métricas pontuais e de distribuição (§5.8–5.9) | modelo escolhido por UF ([notebook](notebooks/04_comparacao.ipynb)) | feito |
+| 5 | Cenários para 2030 | previsões retransformadas com correção de viés (§5.6); dependência entre estados por cópula nos resíduos e simulação conjunta, comparada com a reconciliação hierárquica SP+MG+RJ+ES = Sudeste (cap. 11, §13.5) | leque da potência acumulada do Sudeste em 2030 ([notebook](notebooks/05_cenarios_2030.ipynb)) | feito |
+| 6 | Impacto na rede | cenários de 2030 × perfil horário de radiação (INMET) contra a carga do ONS | carga líquida ao meio-dia em 2030 | próximo |
 
 O que os dados já mostram (fases 1 e 2):
 
@@ -39,6 +39,14 @@ O que os dados já mostram (fases 1 e 2):
 - A sazonalidade é fraca: a força sazonal fica no máximo em 0,33, abaixo do limiar de 0,64 do FPP3, então não há diferença sazonal.
 - Em todas as UFs o log tem uma raiz unitária (d = 1), e a diferença se comporta como MA(1). O ponto de partida é um ARIMA(0,1,1).
 - O teste de Zivot-Andrews põe a quebra mais forte na taxa de crescimento de SP em jan/2023 (fim da janela da lei), e a de MG e do Sudeste em mar–abr/2020, antes da lei. O modelo da fase 3 precisa separar esses dois movimentos.
+
+Resultados das fases 3 a 5 (retrato da ANEEL de out/2026, série até jun/2026):
+
+- **A desaceleração começou antes da lei.** No Sudeste, o crescimento da potência adicionada por mês cai de ~200% ao ano (2016–2019) para ~40% (2020–21), com quebra em mar/2020.
+- **A corrida de 2022–23 foi uma antecipação modesta**: de 0,5 a 1,0 GW a mais que os contrafactuais sem lei. Depois dela, a potência adicionada por mês parou de crescer, e de jul/2023 a jun/2026 faltam de 5 a 8 GW frente ao que se esperava sem a lei (`resultados/interv_contrafactual_se.png`).
+- Os resíduos do modelo de intervenção de MG e ES têm autocorrelação que ordens até ARMA(3,3) não eliminam, e o efeito estimado da lei não muda com a ordem. Na validação cruzada, a cobertura baixa desses estados vem de viés, não de intervalos estreitos.
+- **O modelo escolhido é a combinação ETS + Bass** (fase 4): menor CRPS em SP, ES e no Sudeste, e viés de 1% na soma de 12 meses do Sudeste. Os modelos isolados erram em sentidos opostos: os de tendência preveem demais e o Bass, de menos (`resultados/comparacao_vies.png`).
+- **2030:** o Sudeste deve ter cerca de **26,5 GW instalados em dez/2030** (80%: 22,8 a 31,1 GW), contra 16,7 GW em jun/2026, com 2 a 2,5 GW adicionados por ano. A cópula entre os estados alarga o leque em 17%. Soma dos estados, previsão direta e reconciliação MinT diferem em menos de 0,5 GW. Conforme o modelo, a média vai de 18,7 GW (Bass) a 34,3 GW (ETS) (`resultados/cenarios_leque_se.png`, `resultados/cenarios_2030_metodos_modelos.png`).
 
 ## Dados
 
@@ -67,9 +75,13 @@ src/                    pipeline de dados: um script por etapa
   extract_aneel.py      etapa aneel
   preprocess_aneel.py   etapa preproc
   build_series.py       etapa serie
+  modelos.py            modelos das fases 3 a 5: intervenção, candidatos, validação cruzada, cópula, reconciliação
   estilo.py             cores e estilo comuns dos gráficos
 notebooks/              exploração e análise
   02_identificacao.ipynb  fase 2: STL, ACF/PACF, raiz unitária, quebras
+  03_intervencao.ipynb    fase 3: efeito da Lei 14.300 (regressão com erros ARIMA, contrafactuais)
+  04_comparacao.ipynb     fase 4: validação cruzada dos candidatos e escolha do modelo
+  05_cenarios_2030.ipynb  fase 5: simulação conjunta com cópula, reconciliação e leque de 2030
 resultados/             gráficos gerados pelos scripts (não versionado, criado pelo main.py)
 data/                   não versionado, criado pelo main.py
   raw/                  arquivos como vieram das fontes
@@ -114,6 +126,7 @@ python src/main.py --refresh               # baixa de novo ONS e ANEEL (retratos
 ```
 
 Para os notebooks, selecione o kernel do `.venv` no VSCode ou no Jupyter.
+Os notebooks 03 a 05 rodam em ordem: o 05 lê o resultado da validação cruzada do 04 (`data/interim/cv_fase4.parquet`, ~7 min para refazer) e grava os caminhos de 2030 em `data/processed/cenarios_2030_caminhos.parquet`, a entrada da fase 6.
 
 Se instalar um pacote novo, acrescente-o ao `requirements.txt` com a versão fixada.
 

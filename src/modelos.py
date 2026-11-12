@@ -361,6 +361,7 @@ def validacao_cruzada(y: pd.Series, fabricas: dict, origens: pd.DatetimeIndex, h
                     "modelo": nome, "origem": o, "h": k + 1,
                     "erro_log": teste.iloc[k] - np.median(sim[k]),
                     "crps_log": crps_amostra(sim[k], teste.iloc[k]),
+                    "pit": np.mean(sim[k] <= teste.iloc[k]),
                     "erro_mw": np.exp(teste.iloc[k]) - np.exp(sim[k]).mean(),
                     "erro_soma_pct": 100 * (soma_obs - soma.mean()) / soma_obs if k == h - 1 else np.nan,
                     "cobre80_soma": float(np.quantile(soma, 0.1) <= soma_obs <= np.quantile(soma, 0.9))
@@ -378,6 +379,18 @@ def resumo_cv(cv: pd.DataFrame) -> pd.DataFrame:
         "viés soma 12m %": g["erro_soma_pct"].mean(),
         "|erro| soma 12m %": g["erro_soma_pct"].apply(lambda e: e.abs().mean()),
         "cobertura 80% soma": g["cobre80_soma"].mean(),
+    })
+
+
+def calibracao_cv(cv: pd.DataFrame) -> pd.DataFrame:
+    """Calibração mês a mês pelo PIT (FPP3 §5.9): fração dos meses observados dentro do
+    intervalo de 80% e de 50% previsto, e PIT médio (0,5 = sem viés; acima de 0,5 o
+    observado tende a ficar acima da previsão)."""
+    g = cv.groupby("modelo", sort=False)["pit"]
+    return pd.DataFrame({
+        "cobertura 80% mês": g.apply(lambda p: ((p >= 0.1) & (p <= 0.9)).mean()),
+        "cobertura 50% mês": g.apply(lambda p: ((p >= 0.25) & (p <= 0.75)).mean()),
+        "PIT médio": g.mean(),
     })
 
 
@@ -409,3 +422,41 @@ def choques_copula(resid: pd.DataFrame, h: int, n: int, seed: int = 0,
 def correlacao_copula(resid: pd.DataFrame) -> pd.DataFrame:
     rho_s = resid.dropna().corr(method="spearman")
     return 2 * np.sin(np.pi * rho_s / 6)
+
+
+def simular_conjunto(fabrica, y: dict[str, pd.Series], z: dict[str, np.ndarray], h: int,
+                     seed: int = 1) -> dict[str, np.ndarray]:
+    """Ajusta o modelo em cada série e devolve os caminhos da potência adicionada em MW
+    (h x n), já retransformados. Os choques z vêm de choques_copula, então os caminhos de
+    estados diferentes saem com a dependência estimada nos resíduos. A média dos caminhos
+    em MW é a previsão com correção de viés da retransformação (FPP3 §5.6)."""
+    return {uf: np.exp(fabrica().fit(y[uf]).simulate(h, z[uf], rng=np.random.default_rng(seed)))
+            for uf in z}
+
+
+def reconciliar(base: dict[str, np.ndarray], total: str, partes: list[str],
+                metodo: str = "mint") -> dict[str, np.ndarray]:
+    """Reconcilia caminhos simulados para que partes somem o total (FPP3 cap. 11).
+
+    Para cada horizonte, as previsões base dos nós (total e partes) são projetadas na
+    coerência: y~ = S (S' W^-1 S)^-1 S' W^-1 y^, caminho a caminho. W é a covariância das
+    previsões base no horizonte, estimada nos próprios caminhos: completa em "mint" (traço
+    mínimo, Wickramasuriya et al., 2019), só a diagonal em "wls". Devolve os nós
+    reconciliados; o total é a soma das partes reconciliadas.
+    """
+    nos = [total, *partes]
+    S = np.vstack([np.ones(len(partes)), np.eye(len(partes))])
+    h = base[total].shape[0]
+    out = {uf: np.empty_like(base[uf]) for uf in partes}
+    for k in range(h):
+        Y = np.vstack([base[uf][k] for uf in nos])
+        W = np.cov(Y)
+        if metodo == "wls":
+            W = np.diag(np.diag(W))
+        Wi_S = np.linalg.solve(W, S)
+        P = np.linalg.solve(S.T @ Wi_S, Wi_S.T)
+        B = P @ Y
+        for i, uf in enumerate(partes):
+            out[uf][k] = B[i]
+    out[total] = sum(out[uf] for uf in partes)
+    return out
